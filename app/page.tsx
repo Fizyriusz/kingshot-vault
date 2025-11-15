@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
+import Navbar from '@/components/Navbar' // <--- IMPORTUJEMY NASZ NOWY KOMPONENT
 
-// Typowanie danych, które pobierzemy z Supabase
-// Ważne, aby pasowały do kolumn w SQL
+// Typowanie danych - bez zmian
 type PatchNote = {
   id: number;
   version: string;
@@ -9,29 +9,16 @@ type PatchNote = {
   published_date: string | null;
 }
 
-// Funkcja pomocnicza do formatowania daty (opcjonalna, ale przydatna)
-// const formatDate = (dateString: string | null) => {
-//   if (!dateString) return '';
-//   return new Date(dateString).toLocaleDateString('pl-PL', {
-//     day: 'numeric',
-//     month: 'long',
-//     year: 'numeric'
-//   });
-// };
-
 // -----------------------------------------------------------------
 // Główna funkcja strony (komponent serwerowy)
-// Zwróć uwagę na słowo kluczowe 'async'
 // -----------------------------------------------------------------
 export default async function HomePage() {
 
   // --- SEKCJA POBIERANIA DANYCH ---
-  // Domyślnie ustawiamy puste wartości, na wypadek błędu
   let patchNotes: PatchNote[] | null = [];
   let fetchError: string | null = null;
 
   try {
-    // Sprawdzamy, czy klucze API są dostępne
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       throw new Error("Brak kluczy API Supabase w pliku .env.local");
     }
@@ -39,56 +26,31 @@ export default async function HomePage() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     
-    // Tworzymy klienta Supabase
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Pobieramy dane z tabeli 'patch_notes'
     const { data, error } = await supabase
       .from('patch_notes')
-      .select('id, version, title, published_date') // Pobieramy tylko to, co potrzebne na głównej
-      .order('published_date', { ascending: false }) // Sortujemy od najnowszych
-      .limit(3); // Pobieramy tylko 3 najnowsze
+      .select('id, version, title, published_date') 
+      .order('published_date', { ascending: false })
+      .limit(3); 
 
-    if (error) {
-      throw error; // Rzucamy błędem, aby złapał go blok catch
-    }
-    
-    patchNotes = data; // Przypisujemy pobrane dane
+    if (error) throw error;
+    patchNotes = data; 
 
   } catch (error: any) {
     console.error('Błąd podczas pobierania patch notes:', error.message);
-    fetchError = error.message; // Zapisujemy komunikat o błędzie do wyświetlenia
+    fetchError = error.message;
   }
   // --- KONIEC SEKCJI POBIERANIA DANYCH ---
 
 
   // --- SEKCJA RENDEROWANIA UI ---
-  // Zwracamy kod naszego "Pulpitu Dowódcy"
   return (
     <>
-      {/* === NAWIGACJA (Placeholder) === */}
-      <nav className="bg-brand-surface sticky top-0 z-50 shadow-lg">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex-shrink-0 flex items-center">
-              <span className="text-2xl font-heading font-bold text-brand-primary">[LOGO]</span>
-              <span className="text-xl font-heading font-bold text-white ml-2 hidden sm:block">Kingshot Vault</span>
-            </div>
-            <div className="hidden md:flex md:space-x-8">
-              <a href="#" className="text-gray-300 hover:text-white px-1 pt-1 text-sm font-medium">Bohaterowie</a>
-              <a href="#" className="text-gray-300 hover:text-white px-1 pt-1 text-sm font-medium">Wydarzenia</a>
-              <a href="#" className="text-gray-300 hover:text-white px-1 pt-1 text-sm font-medium">Poradniki</a>
-              <a href="#" className="text-gray-300 hover:text-white px-1 pt-1 text-sm font-medium">Narzędzia</a>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button className="text-gray-300 hover:text-white font-medium text-sm">PL 🇵🇱</button>
-            </div>
-          </div>
-        </div>
-      </nav>
+      {/* === NAWIGACJA === */}
+      <Navbar /> {/* <--- UŻYWAMY NASZEGO NOWEGO KOMPONENTU */}
 
       {/* === PANEL 1: HERO === */}
-      {/* Używamy klasy 'bg-hero-pattern' zdefiniowanej w tailwind.config.ts */}
       <header className="bg-hero-pattern bg-cover bg-center">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl h-[60vh] min-h-[400px] flex flex-col justify-center items-center text-center">
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-heading font-black text-white leading-tight">
@@ -97,7 +59,7 @@ export default async function HomePage() {
           <p className="mt-4 text-xl sm:text-2xl text-brand-text-secondary font-medium">
             Wiedza. Narzędzia. Dominacja.
           </p>
-          <a href="#" className="mt-8 px-10 py-4 bg-brand-primary text-brand-background font-heading font-bold text-lg rounded-lg shadow-lg transition-transform transform hover:scale-105">
+          <a href="/bohaterowie" className="mt-8 px-10 py-4 bg-brand-primary text-brand-background font-heading font-bold text-lg rounded-lg shadow-lg transition-transform transform hover:scale-105">
             PRZEJDŹ DO ZBROJOWNI
           </a>
         </div>
@@ -133,7 +95,6 @@ export default async function HomePage() {
             <div className="bg-brand-surface rounded-lg shadow-lg p-6">
               <h2 className="text-3xl font-heading font-bold text-white mb-4">Ostatnie Patch Notes</h2>
               
-              {/* Tutaj wstrzykujemy nasze dane z Supabase */}
               {patchNotes && patchNotes.length > 0 ? (
                 <ul className="space-y-3">
                   {patchNotes.map((note) => (
@@ -149,7 +110,6 @@ export default async function HomePage() {
                 <p className="text-brand-text-secondary">Nie znaleziono żadnych wpisów.</p>
               )}
               
-              {/* Wyświetl błąd, jeśli wystąpił */}
               {fetchError && (
                  <div className="mt-4 bg-red-800 border border-red-600 text-red-100 px-4 py-3 rounded">
                     <p className="font-bold">Błąd ładowania danych:</p>
@@ -165,7 +125,7 @@ export default async function HomePage() {
         <section className="mb-16">
           <h2 className="text-3xl font-heading font-bold text-white text-center mb-8">Niezbędnik Gracza</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <a href="#" className="block p-6 bg-brand-surface rounded-lg shadow-lg border-2 border-brand-surface hover:border-brand-primary hover:shadow-xl transition-all transform hover:-translate-y-1">
+            <a href="/bohaterowie" className="block p-6 bg-brand-surface rounded-lg shadow-lg border-2 border-brand-surface hover:border-brand-primary hover:shadow-xl transition-all transform hover:-translate-y-1">
               <h3 className="text-xl font-heading font-bold text-white mb-2">Interaktywna Zbrojownia</h3>
               <p className="text-brand-text-secondary">Przeglądaj, filtruj i grupuj wszystkich bohaterów w grze.</p>
             </a>
@@ -179,8 +139,6 @@ export default async function HomePage() {
             </a>
           </div>
         </section>
-
-        {/* ... (Możemy tu dodać Panel 4: Przewodniki Strategiczne) ... */}
 
       </main>
 

@@ -1,26 +1,11 @@
 "use client" // Niezbędne dla interaktywności
 
 import React, { useState, useMemo } from 'react';
-import Link from 'next/link'; // Importujemy Link
+import Link from 'next/link';
+import { type Hero } from './types'; // <--- TERAZ TYLKO IMPORTUJEMY (NAPRAWA BŁĘDU)
 
-// Definicja typu Bohatera
-// MUSI być wyeksportowany (export type) i zawierać 'slug'
-export type Hero = {
-  id: number;
-  name: string;
-  avatar_url: string | null;
-  title: string | null; // Dodajemy title dla kokpitu
-  tier_pvp: string;
-  tier_pve: string;
-  is_f2p: boolean;
-  generation: number;
-  unit_type: string | null;
-  role: string | null;
-  use_case: string | null;
-  acquisition: string | null;
-  tags: string[] | null;
-  slug: string; 
-}
+// Reszta pliku jest taka sama jak wcześniej, ale
+// USUNĘLIŚMY stąd zduplikowaną definicję 'export type Hero'
 
 // Mapowanie ocen na wartości liczbowe do sortowania
 const tierMap: { [key: string]: number } = { 'S+': 5, 'S': 4, 'A': 3, 'B': 2, 'C': 1, 'D': 0 };
@@ -36,9 +21,10 @@ export default function HeroArmory({ heroes }: HeroArmoryProps) {
   const [sortBy, setSortBy] = useState('name-asc');
   const [groupBy, setGroupBy] = useState('none');
   const [filterF2P, setFilterF2P] = useState(false);
-  const [filterInfantry, setFilterInfantry] = useState(false);
-  const [filterCavalry, setFilterCavalry] = useState(false);
-  const [filterArchers, setFilterArchers] = useState(false);
+  // Nowe filtry Rarity
+  const [filterSSR, setFilterSSR] = useState(false);
+  const [filterSR, setFilterSR] = useState(false);
+  const [filterR, setFilterR] = useState(false);
 
   // === MEMOIZACJA ===
   const filteredAndSortedHeroes = useMemo(() => {
@@ -48,15 +34,17 @@ export default function HeroArmory({ heroes }: HeroArmoryProps) {
     filtered = filtered.filter(hero => {
       const nameMatch = hero.name.toLowerCase().includes(searchTerm.toLowerCase());
       const f2pMatch = !filterF2P || hero.is_f2p;
-      const unitMatch = (!filterInfantry && !filterCavalry && !filterArchers) ||
-                        (filterInfantry && hero.unit_type === 'Piechota') ||
-                        (filterCavalry && hero.unit_type === 'Konnica') ||
-                        (filterArchers && hero.unit_type === 'Łucznicy');
       
-      return nameMatch && f2pMatch && unitMatch;
+      // NOWY FILTR RARITY
+      const rarityMatch = (!filterSSR && !filterSR && !filterR) ||
+                          (filterSSR && hero.rarity === 'SSR') ||
+                          (filterSR && hero.rarity === 'SR') ||
+                          (filterR && hero.rarity === 'R');
+      
+      return nameMatch && f2pMatch && rarityMatch;
     });
 
-    // 2. Sortowanie
+    // 2. Sortowanie (bez zmian)
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'name-asc':
@@ -73,7 +61,7 @@ export default function HeroArmory({ heroes }: HeroArmoryProps) {
     });
 
     return filtered;
-  }, [heroes, searchTerm, sortBy, filterF2P, filterInfantry, filterCavalry, filterArchers]);
+  }, [heroes, searchTerm, sortBy, filterF2P, filterSSR, filterSR, filterR]); // Dodane nowe filtry
 
   // === GRUPOWANIE ===
   const groupedHeroes = useMemo(() => {
@@ -85,19 +73,22 @@ export default function HeroArmory({ heroes }: HeroArmoryProps) {
     const groupKey = groupBy as keyof Hero; 
 
     filteredAndSortedHeroes.forEach(hero => {
-      let key = hero[groupKey] as string | number;
+      let key = hero[groupKey] as string | number | null;
       
       if (!key) {
         key = 'Inne';
       }
-      if (groupKey === 'generation') {
-        key = `Generacja ${key}`;
+      if (groupKey === 'generation') key = `Generacja ${key}`;
+      if (groupKey === 'rarity') {
+        if (key === 'SSR') key = 'Mythic (SSR)';
+        if (key === 'SR') key = 'Epic (SR)';
+        if (key === 'R') key = 'Rare (R)';
       }
 
-      if (!groups[key]) {
-        groups[key] = [];
+      if (!groups[key as string]) {
+        groups[key as string] = [];
       }
-      groups[key].push(hero);
+      groups[key as string].push(hero);
     });
 
     return groups;
@@ -149,6 +140,7 @@ export default function HeroArmory({ heroes }: HeroArmoryProps) {
               onChange={(e) => setGroupBy(e.target.value)}
             >
               <option value="none">Brak Grupowania</option>
+              <option value="rarity">Rzadkość (Rarity)</option> {/* <--- NOWA OPCJA */}
               <option value="generation">Generacja</option>
               <option value="unit_type">Typ Jednostek</option>
               <option value="acquisition">Sposób Zdobycia</option>
@@ -160,18 +152,19 @@ export default function HeroArmory({ heroes }: HeroArmoryProps) {
           {/* Filtry Checkbox */}
           <div>
             <label className="block text-sm font-medium text-brand-text-secondary">Szybkie Filtry</label>
-            <div className="flex flex-wrap space-x-4 mt-2 pt-1">
+            <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2 pt-1">
               <label className="flex items-center text-sm">
                 <input type="checkbox" className="form-checkbox-filter mr-1" checked={filterF2P} onChange={(e) => setFilterF2P(e.target.checked)} /> F2P
               </label>
+              {/* NOWE FILTRY RARITY */}
               <label className="flex items-center text-sm">
-                <input type="checkbox" className="form-checkbox-filter mr-1" checked={filterInfantry} onChange={(e) => setFilterInfantry(e.target.checked)} /> Piechota
+                <input type="checkbox" className="form-checkbox-filter mr-1" checked={filterSSR} onChange={(e) => setFilterSSR(e.target.checked)} /> SSR
               </label>
               <label className="flex items-center text-sm">
-                <input type="checkbox" className="form-checkbox-filter mr-1" checked={filterCavalry} onChange={(e) => setFilterCavalry(e.target.checked)} /> Konnica
+                <input type="checkbox" className="form-checkbox-filter mr-1" checked={filterSR} onChange={(e) => setFilterSR(e.target.checked)} /> SR
               </label>
               <label className="flex items-center text-sm">
-                <input type="checkbox" className="form-checkbox-filter mr-1" checked={filterArchers} onChange={(e) => setFilterArchers(e.target.checked)} /> Łucznicy
+                <input type="checkbox" className="form-checkbox-filter mr-1" checked={filterR} onChange={(e) => setFilterR(e.target.checked)} /> R
               </label>
             </div>
           </div>
@@ -215,6 +208,16 @@ function HeroCard({ hero }: { hero: Hero }) {
     'A': 'bg-tier-a', 'B': 'bg-tier-b',
     'C': 'bg-tier-c', 'D': 'bg-gray-500'
   }[hero.tier_pvp] || 'bg-gray-700';
+
+  // NOWA FUNKCJA DO KOLORÓW OBRAMOWANIA
+  const rarityBorderColor = () => {
+    switch (hero.rarity) {
+      case 'SSR': return 'border-yellow-500'; // Złoty
+      case 'SR': return 'border-purple-500'; // Fioletowy
+      case 'R': return 'border-blue-500'; // Niebieski
+      default: return 'border-gray-700';
+    }
+  }
   
   const tagColor = (tag: string) => {
     switch (tag.toLowerCase()) {
@@ -230,10 +233,10 @@ function HeroCard({ hero }: { hero: Hero }) {
   }
 
   return (
-    // Używamy 'hero.slug' bezpośrednio z bazy danych
     <Link 
       href={`/bohaterowie/${hero.slug}`} 
-      className="hero-card block bg-brand-surface rounded-lg shadow-lg overflow-hidden relative transition-transform transform hover:-translate-y-1 hover:shadow-xl"
+      // DODAJEMY KLASĘ OBRAMOWANIA (rarityBorderColor)
+      className={`hero-card block bg-brand-surface rounded-lg shadow-lg overflow-hidden relative transition-all transform hover:-translate-y-1 hover:shadow-xl border-b-4 ${rarityBorderColor()}`}
     >
       <div className={`${tierColor} absolute top-2 right-2 text-white font-heading font-black text-lg px-2 py-0.5 rounded-md z-10`}>
         {hero.tier_pvp}
